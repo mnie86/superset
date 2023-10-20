@@ -42,6 +42,7 @@ export type UiConfigType = {
     visible?: boolean
     expanded?: boolean
   }
+  urlParams?: {[key: string]: any}
 }
 
 export type EmbedDashboardParams = {
@@ -74,13 +75,13 @@ export type EmbeddedDashboard = {
  * Embeds a Superset dashboard into the page using an iframe.
  */
 export async function embedDashboard({
-  id,
-  supersetDomain,
-  mountPoint,
-  fetchGuestToken,
-  dashboardUiConfig,
-  debug = false
-}: EmbedDashboardParams): Promise<EmbeddedDashboard> {
+                                       id,
+                                       supersetDomain,
+                                       mountPoint,
+                                       fetchGuestToken,
+                                       dashboardUiConfig,
+                                       debug = false
+                                     }: EmbedDashboardParams): Promise<EmbeddedDashboard> {
   function log(...info: unknown[]) {
     if (debug) {
       console.debug(`[superset-embedded-sdk][dashboard ${id}]`, ...info);
@@ -88,10 +89,6 @@ export async function embedDashboard({
   }
 
   log('embedding');
-
-  if (supersetDomain.endsWith("/")) {
-    supersetDomain = supersetDomain.slice(0, -1);
-  }
 
   function calculateConfig() {
     let configNumber = 0
@@ -120,6 +117,8 @@ export async function embedDashboard({
         + filterConfigKeys
           .map(key => DASHBOARD_UI_FILTER_CONFIG_URL_PARAM_KEY[key] + '=' + filterConfig[key]).join('&')
         : ""
+      let extraUrlParams = new URLSearchParams(dashboardUiConfig?.urlParams || window.location.search).toString()
+      if (!!extraUrlParams) extraUrlParams = "&" + extraUrlParams
 
       // set up the iframe's sandbox configuration
       iframe.sandbox.add("allow-same-origin"); // needed for postMessage to work
@@ -153,7 +152,7 @@ export async function embedDashboard({
         resolve(new Switchboard({ port: ourPort, name: 'superset-embedded-sdk', debug }));
       });
 
-      iframe.src = `${supersetDomain}/embedded/${id}${dashboardConfig}${filterConfigUrlParams}`;
+      iframe.src = `${supersetDomain}/embedded/${id}${dashboardConfig}${filterConfigUrlParams}${extraUrlParams}`;
       //@ts-ignore
       mountPoint.replaceChildren(iframe);
       log('placed the iframe')
